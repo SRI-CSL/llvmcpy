@@ -20,7 +20,7 @@ from collections import defaultdict
 from shutilwhich import which
 
 def run_llvm_config(args):
-    """Invoke llvm-config with the specified arguments and return the output"""
+    """Invoke llvm-config with the specified arguments and return the output."""
 
     global llvm_config
     return subprocess.check_output([llvm_config] + args).decode("utf-8").strip()
@@ -41,6 +41,7 @@ def find_program(env_variable, names):
                        + " ".join(names))
 
 def is_llvm_type(name):
+    """Recognizes the names of the LLVM C-API types."""
     return name.startswith("struct LLVM")
 
 def remove_llvm_prefix(name):
@@ -609,7 +610,7 @@ def generate_wrapper():
 
     if len(libs) == 0:
         raise ValueError("No valid LLVM libraries found' \
-            ', LLVM must be built with BUILD_SHARED_LIBS")
+            ', LLVM must be built with either LLVM_BUILD_LLVM_DYLIB or BUILD_SHARED_LIBS")
 
     classes = defaultdict(list)
     global_functions = []
@@ -762,6 +763,7 @@ search_paths = os.environ.get("PATH")
 llvm_config = find_program("LLVM_CONFIG", ["llvm-config"])
 search_paths = run_llvm_config(["--bindir"]) + ":" + search_paths
 
+#create the cache module name and directory
 cache_dir = appdirs.user_cache_dir('llvmcpy')
 version = run_llvm_config(["--version"])
 to_hash = llvm_config.encode("utf-8")
@@ -769,10 +771,14 @@ hasher = hashlib.sha256()
 hasher.update(to_hash)
 cache_dir = os.path.join(cache_dir, hasher.hexdigest() + "-" + version)
 cached_module = os.path.join(cache_dir, "llvmcpyimpl.py")
+
+#if necessary create the cached module
 if not os.path.exists(cached_module):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
     generate_wrapper()
+
+#load the generated wrappers
 sys.path.insert(0, cache_dir)
 from llvmcpyimpl import *
 del sys.path[0]
